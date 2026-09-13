@@ -44,22 +44,22 @@ const Renderer = (() => {
 
     // 天空 / 背景
     const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
-    skyGrad.addColorStop(0, '#7ec0ee');
-    skyGrad.addColorStop(0.16, '#a8d8a0');
-    skyGrad.addColorStop(1, '#6b4423');
+    skyGrad.addColorStop(0, '#6fb3e0');
+    skyGrad.addColorStop(0.16, '#8fc48a');
+    skyGrad.addColorStop(1, '#5d3a1e');
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, W, H);
 
-    // 格子草坪
+    // 格子草坪（略降亮度与饱和度，让单位更突出）
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const x = HUD_W + c * CELL_W;
         const y = TOP_OFFSET + r * CELL_H;
-        ctx.fillStyle = (r + c) % 2 === 0 ? '#a2d149' : '#8cc63f';
+        ctx.fillStyle = (r + c) % 2 === 0 ? '#8cbb3c' : '#7aab30';
         ctx.fillRect(x, y, CELL_W, CELL_H);
 
         // 草纹理
-        ctx.strokeStyle = 'rgba(255,255,255,.055)';
+        ctx.strokeStyle = 'rgba(255,255,255,.05)';
         ctx.lineWidth = 1;
         ctx.strokeRect(x + .5, y + .5, CELL_W - 1, CELL_H - 1);
       }
@@ -138,6 +138,61 @@ const Renderer = (() => {
     ctx.restore();
   }
 
+  /* ---------------- 视觉辅助：让单位在草坪上清晰可见 ---------------- */
+
+  /**
+   * 统一的 Emoji 绘制：深色光晕 + 可选底板。
+   * 纯色草坪（尤其浓雾关）上，没有深色勾边的 Emoji 会“发淡”，
+   * 这里用 shadowBlur 打出深色光晕，并可选在后方垫一块暗色底板。
+   */
+  function drawEmoji(text, size, opts = {}) {
+    const {
+      plate = 0,                       // >0 时在后方画暗色椭圆底板的宽度
+      plateH = 0,
+      plateAlpha = .26,
+      halo = 5,                        // 深色光晕强度
+      alpha = 1,
+      y = 0,
+    } = opts;
+
+    ctx.save();
+    if (alpha !== 1) ctx.globalAlpha *= alpha;
+
+    // 1) 暗色底板：保证与草坪底色分离
+    if (plate > 0) {
+      ctx.save();
+      ctx.globalAlpha *= plateAlpha;
+      const g = ctx.createRadialGradient(0, y, 2, 0, y, plate / 2);
+      g.addColorStop(0, 'rgba(10,16,4,.95)');
+      g.addColorStop(.65, 'rgba(10,16,4,.55)');
+      g.addColorStop(1, 'rgba(10,16,4,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(0, y, plate / 2, (plateH || plate * .78) / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 2) Emoji 本体：深色光晕 + 投影
+    ctx.font = `${size}px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (halo > 0) {
+      ctx.shadowColor = 'rgba(8,14,2,.95)';
+      ctx.shadowBlur = halo;
+      ctx.shadowOffsetY = 2;
+    }
+    ctx.fillText(text, 0, y);
+
+    // 3) 再叠一层更紧的光晕，强化边缘
+    if (halo > 0) {
+      ctx.shadowBlur = halo * .45;
+      ctx.shadowOffsetY = 0;
+      ctx.fillText(text, 0, y);
+    }
+    ctx.restore();
+  }
+
   /* ---------------- 植物 ---------------- */
   function drawPlants(game) {
     for (const p of game.plants) drawPlant(p);
@@ -168,41 +223,53 @@ const Renderer = (() => {
     }
 
     ctx.globalAlpha = p.chewingUntil > performance.now() ? .82 : 1;
-    if (p.hurtFlash > 0) {
-      ctx.filter = `brightness(${1 + p.hurtFlash * 1.4}) saturate(${1 - p.hurtFlash * .4})`;
-    }
-
-    ctx.font = '54px serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    const hurt = p.hurtFlash > 0;
+    const H = hurt ? 6 + p.hurtFlash * 6 : 5;
 
     if (p.isMine && !p.armed) {
-      // 土豆雷未激活：画个半埋的土豆
-      ctx.globalAlpha = .75;
-      ctx.fillText('🥔', 0, 8);
-      ctx.globalAlpha = 1;
-      // 倒计时环
+      // 土豆雷未激活：半埋的土豆 + 倒计时环
+      drawEmoji('🥔', 54, { halo: H, alpha: .85, y: 8 });
       const total = p.def.armTime;
       const left = Math.max(0, p.armedAt - performance.now());
       const ratio = 1 - left / total;
-      ctx.strokeStyle = 'rgba(255,255,255,.85)';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(0, 0, 30, -Math.PI / 2, -Math.PI / 2 + ratio * Math.PI * 2);
-      ctx.stroke();
-    } else if (p.isMine && p.armed) {
-      ctx.fillText('🥔', 0, 0);
+      ctx.save();
+      ctx.globalAlpha *= 1;
+      ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.arc(0, 0, 30, -Math.PI / 2, -Math.PI / 2 + ratio * Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = '#fff8d6'; ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.arc(0, 0, 30, -Math.PI / 2, -Math.PI / 2 + ratio * Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    } else if (p.isMine) {
+      // 已武装：加一圈警示光环
+      ctx.save();
+      ctx.globalAlpha *= .45 + Math.sin(performance.now() / 260) * .18;
+      ctx.strokeStyle = '#ffd54f'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(0, 2, 28, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+      drawEmoji('🥔', 54, { halo: H });
     } else if (p.isChomper) {
-      ctx.font = p.chewingUntil > performance.now() ? '46px serif' : '54px serif';
-      ctx.fillText('🪴', 0, 0);
+      const chewing = p.chewingUntil > performance.now();
+      if (chewing) {
+        ctx.save();
+        ctx.globalAlpha *= .5;
+        ctx.strokeStyle = '#ffab91'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+      }
+      drawEmoji('🪴', chewing ? 46 : 54, { halo: H });
     } else if (p.isInstant) {
-      ctx.globalAlpha = .9 + Math.sin(performance.now() / 90) * .1;
-      ctx.fillText(p.def.emoji, 0, 0);
+      // 一次性植物：脉动光环，强调“用完即没”
+      ctx.save();
+      ctx.globalAlpha *= .5 + Math.sin(performance.now() / 110) * .3;
+      ctx.strokeStyle = '#ff7043'; ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.arc(0, 0, 29, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+      drawEmoji(p.def.emoji, 54, { halo: H + 2 });
     } else {
-      ctx.fillText(p.def.emoji, 0, 0);
+      // 普通植物：暗色底板 + 深色光晕
+      drawEmoji(p.def.emoji, 54, { plate: 62, plateH: 58, plateAlpha: .28, halo: H });
     }
 
-    ctx.filter = 'none';
     ctx.restore();
   }
 
@@ -249,45 +316,50 @@ const Renderer = (() => {
       ctx.restore();
     }
 
-    // 受伤闪白
+    // 受伤闪白 / 减速染色
     if (z.hurtFlash > 0) {
-      ctx.filter = `brightness(${1 + z.hurtFlash * 1.8}) saturate(.4)`;
+      ctx.filter = `brightness(${1 + z.hurtFlash * 1.6}) saturate(.45)`;
+    } else if (z.frozen > .35 && !z.dead) {
+      ctx.filter = `brightness(${1 + z.frozen * .35}) saturate(${1 - z.frozen * .55})`;
     }
 
-    ctx.font = '52px serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(z.def.emoji, 0, 0);
+    // 僵尸主体：红棕色底板 + 强深色光晕，与绿草坪强烈区分
+    const halo = z.dead ? 3 : (z.attacking ? 10 : 8);
+    drawEmoji(z.def.emoji, 52, {
+      plate: z.dead ? 0 : 66,
+      plateH: z.dead ? 0 : 68,
+      plateAlpha: .34,
+      halo,
+    });
     ctx.filter = 'none';
 
-    // 护具（未被打掉时）
+    // 护具（未被打掉时）—— 同样加光晕以保证可读
     if (z.def.helmet && !z.armLost && !z.dead) {
-      ctx.font = '22px serif';
-      ctx.fillText(z.def.helmet, 0, -26);
+      drawEmoji(z.def.helmet, 24, { halo: 4, y: -27 });
     }
 
-    // 撑杆跳跃中的杆子
+    // 撑杆僵尸的背心
     if (z.def.canVault && !z.hasVaulted && !z.dead) {
-      ctx.font = '30px serif';
-      ctx.fillText('🎽', 0, 4);
+      drawEmoji('🎽', 30, { halo: 3, y: 4 });
     }
 
     // 血条
     if (!z.dead && z.hp < z.maxHp) {
-      const w = 44, h = 5;
-      ctx.fillStyle = 'rgba(0,0,0,.6)';
-      ctx.fillRect(-w / 2, -40, w, h);
+      const w = 48, h = 6;
+      ctx.fillStyle = 'rgba(0,0,0,.7)';
+      ctx.fillRect(-w / 2 - 1, -41, w + 2, h + 2);
       const ratio = Math.max(0, z.hp / z.maxHp);
-      ctx.fillStyle = ratio > .5 ? '#ef5350' : ratio > .22 ? '#ff9800' : '#b71c1c';
+      ctx.fillStyle = ratio > .5 ? '#ff5252' : ratio > .22 ? '#ff9800' : '#b71c1c';
       ctx.fillRect(-w / 2, -40, w * ratio, h);
     }
 
     // 攻击提示
     if (z.attacking && !z.dead) {
-      ctx.globalAlpha = .8;
-      ctx.font = '16px serif';
-      ctx.fillText('💢', 26, -18);
-      ctx.globalAlpha = 1;
+      drawEmoji('💢', 18, { halo: 3, alpha: .95, y: -20 });
+      ctx.save();
+      ctx.translate(27, -20);
+      drawEmoji('💢', 18, { halo: 3, alpha: .9 });
+      ctx.restore();
     }
 
     ctx.restore();
@@ -296,26 +368,45 @@ const Renderer = (() => {
   /* ---------------- 子弹 ---------------- */
   function drawProjectiles(game) {
     for (const p of game.projectiles) {
-      // 拖尾
-      p.trail.forEach((t, i) => {
+      const isSnow = p.type === 'snow';
+      // 亮黄色调填充 + 近黑描边：在绿色草坪上对比度最高
+      const fill = isSnow ? '#b3e5fc' : '#d4f06a';
+      const edge = isSnow ? '#01579b' : '#1b3a06';
+
+      // 拖尾：同样带深色勾边
+      p.trail.forEach(t => {
         if (t.life <= 0) return;
-        ctx.globalAlpha = t.life * .4;
-        ctx.fillStyle = p.type === 'snow' ? '#81d4fa' : '#9ccc65';
-        ctx.beginPath();
-        ctx.arc(t.x, t.y, 4, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.globalAlpha = t.life * .55;
+        ctx.fillStyle = edge;
+        ctx.beginPath(); ctx.arc(t.x, t.y, 5.6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = fill;
+        ctx.beginPath(); ctx.arc(t.x, t.y, 3.8, 0, Math.PI * 2); ctx.fill();
       });
       ctx.globalAlpha = 1;
 
-      // 弹体
-      ctx.fillStyle = p.type === 'snow' ? '#4fc3f7' : '#7cb342';
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,.7)';
-      ctx.beginPath();
-      ctx.arc(p.x - 2, p.y - 2, 2.4, 0, Math.PI * 2);
-      ctx.fill();
+      // 外发光
+      ctx.save();
+      const glow = ctx.createRadialGradient(p.x, p.y, 1, p.x, p.y, 17);
+      glow.addColorStop(0, isSnow ? 'rgba(179,229,252,.8)' : 'rgba(212,240,106,.75)');
+      glow.addColorStop(1, isSnow ? 'rgba(179,229,252,0)' : 'rgba(212,240,106,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 17, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+
+      // 弹体：粗深色描边 → 亮色填充 → 白色高光
+      ctx.fillStyle = edge;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = fill;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 6.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.95)';
+      ctx.beginPath(); ctx.arc(p.x - 2.4, p.y - 2.4, 2.6, 0, Math.PI * 2); ctx.fill();
+
+      // 寒冰弹：外圈霜环
+      if (isSnow) {
+        ctx.strokeStyle = 'rgba(255,255,255,.9)';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 10.2, 0, Math.PI * 2); ctx.stroke();
+      }
     }
   }
 
@@ -360,9 +451,14 @@ const Renderer = (() => {
       // 剩余时间提示
       if (s.life < .3) {
         ctx.strokeStyle = `rgba(255,80,80,${.9 - s.life * 3})`;
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(0, 0, r + 5, 0, Math.PI * 2); ctx.stroke();
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(0, 0, r + 7, 0, Math.PI * 2); ctx.stroke();
       }
+
+      // 暗色外圈，防止阳光在亮色背景上“化掉”
+      ctx.strokeStyle = 'rgba(90,60,0,.45)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, r + 1, 0, Math.PI * 2); ctx.stroke();
 
       ctx.restore();
     }

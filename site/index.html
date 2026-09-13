@@ -34,6 +34,7 @@
     <div class="hud-right">
       <button id="btn-pause" class="hud-btn" title="暂停 (空格)">⏸️</button>
       <button id="btn-sound" class="hud-btn" title="音效开关">🔊</button>
+      <button id="btn-auto" class="hud-btn" title="自动拾取阳光">☀️</button>
       <button id="btn-help" class="hud-btn" title="帮助 (H)">❓</button>
     </div>
   </header>
@@ -110,6 +111,11 @@
         <section>
           <h3>☀️ 阳光</h3>
           <p>种下<b>向日葵</b>可持续产出阳光，天上也会掉落阳光，点击即可收集。阳光是所有植物的“钱”。</p>
+          <label class="switch-row">
+            <input type="checkbox" id="toggle-autocollect">
+            <span class="switch-track"><span class="switch-knob"></span></span>
+            <span class="switch-label">自动拾取阳光</span>
+          </label>
         </section>
         <section>
           <h3>🌱 种植</h3>
@@ -117,7 +123,7 @@
         </section>
         <section>
           <h3>⌨️ 快捷键</h3>
-          <p><kbd>1</kbd>-<kbd>6</kbd> 选择种子卡 · <kbd>S</kbd> 铲子 · <kbd>空格</kbd> 暂停 · <kbd>Esc</kbd> 取消选择</p>
+          <p><kbd>1</kbd>-<kbd>6</kbd> 选择种子卡 · <kbd>S</kbd> 铲子 · <kbd>空格</kbd> 暂停 · <kbd>Esc</kbd> 取消选择 · <kbd>G</kbd> 自动拾取阳光</p>
         </section>
         <section>
           <h3>🧟 僵尸类型</h3>

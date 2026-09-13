@@ -356,6 +356,73 @@ check('渲染层可完整绘制', (() => {
   return true;
 })());
 
+/* ---- 自动拾取阳光 ---- */
+check('自动拾取默认关闭', new Game().autoCollect === false);
+check('setAutoCollect 开关与持久化', (() => {
+  const g = new Game();
+  g.setAutoCollect(true);
+  const saved = store['pvz-web-autocollect'];
+  const reopened = new Game();          // 新实例应从 localStorage 读回
+  g.setAutoCollect(false);
+  return saved === '1' && reopened.autoCollect === true;
+})());
+check('自动拾取收集已落地阳光', (() => {
+  const g = new Game(); g.startLevel(0); g.setAutoCollect(true);
+  const s0 = g.sun;
+  const sun = new Sun(300, 400, 400, 'plant');   // falling=false
+  sun.age = 1;
+  g.suns.push(sun);
+  g.autoCollectSuns();
+  g.setAutoCollect(false);
+  return g.sun === s0 + 25 && sun.collected === true;
+})());
+check('自动拾取不会瞬收刚出现的阳光', (() => {
+  const g = new Game(); g.startLevel(0);
+  const s0 = g.sun;
+  const sun = new Sun(300, 400, 400, 'plant');
+  sun.age = 0.1;                                  // 刚出现
+  g.suns.push(sun);
+  g.autoCollectSuns();
+  return g.sun === s0 && !sun.collected;
+})());
+check('自动拾取不会收高空下落中的阳光', (() => {
+  const g = new Game(); g.startLevel(0);
+  const s0 = g.sun;
+  const sun = new Sun(300, 100, 400, 'sky');      // 还在高处
+  sun.age = 2; sun.falling = true;
+  g.suns.push(sun);
+  g.autoCollectSuns();
+  return g.sun === s0 && !sun.collected;
+})());
+check('关闭自动拾取后不再收集', (() => {
+  const g = new Game(); g.startLevel(0); g.setAutoCollect(false);
+  const s0 = g.sun;
+  const sun = new Sun(300, 400, 400, 'plant'); sun.age = 5;
+  g.suns.push(sun);
+  g.autoCollectSuns();                     // 直接调用也不该在关闭时生效由 update 控制
+  g.suns.forEach(x => { if (!x.collected && x.age > 0.35) {} });
+  // 验证 update 路径：关闭时 update 不应自动收集
+  g.suns = [new Sun(300, 400, 400, 'plant')]; g.suns[0].age = 5;
+  const before = g.sun;
+  g.update(1/60, VT);
+  return g.sun === before;
+})());
+check('阳光存在时长递增', (() => {
+  const sun = new Sun(300, 300, 400, 'plant');
+  const a0 = sun.age;
+  sun.update(1/60, { spawnSun(){}, puff(){}, collectSun(){} });
+  return sun.age > a0;
+})());
+check('自动拾取不影响手动点击', (() => {
+  const g = new Game(); g.startLevel(0); g.setAutoCollect(true);
+  const s0 = g.sun;
+  const sun = new Sun(sandbox.__x.Grid.cellCX(4), sandbox.__x.Grid.cellCY(2), 0, 'plant');
+  sun.age = 5; g.suns.push(sun);
+  g.onPointerDown(sun.x, sun.y);
+  g.setAutoCollect(false);
+  return g.sun === s0 + 25 && sun.collected;
+})());
+
 checks.forEach(c => console.log(`  ${c.ok ? '✅' : '❌'} ${c.name}`));
 const failed = checks.filter(c => !c.ok);
 

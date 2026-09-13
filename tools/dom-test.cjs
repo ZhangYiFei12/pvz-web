@@ -287,6 +287,31 @@ check('音效图标同步', getEl('btn-sound').textContent === (Sound.isEnabled(
 fire('btn-sound', 'click');
 check('再次点击恢复', Sound.isEnabled() === soundBefore);
 
+/* ================= 测试 9b：自动拾取阳光 UI ================= */
+check('自动拾取按钮存在', !!getEl('btn-auto'));
+const auto0 = game.autoCollect;
+fire('btn-auto', 'click');
+check('点击按钮切换自动拾取', game.autoCollect !== auto0);
+check('按钮 active 样式同步', getEl('btn-auto')._classes.has('active') === game.autoCollect);
+check('开关复选框同步', getEl('toggle-autocollect').checked === game.autoCollect);
+check('设置已写入 localStorage', store['pvz-web-autocollect'] === (game.autoCollect ? '1' : '0'));
+
+// 键盘 G 快捷键
+game.setAutoCollect(false);
+fire('window', 'keydown', { key: 'g', target: { tagName: 'BODY' } });
+check('G 键开启自动拾取', game.autoCollect === true);
+fire('window', 'keydown', { key: 'G', target: { tagName: 'BODY' } });
+check('G 键再次关闭', game.autoCollect === false);
+check('G 键后按钮状态同步', getEl('btn-auto')._classes.has('active') === false);
+
+// 复选框 change 事件
+getEl('toggle-autocollect').checked = true;
+fire('toggle-autocollect', 'change');
+check('复选框可开启自动拾取', game.autoCollect === true);
+getEl('toggle-autocollect').checked = false;
+fire('toggle-autocollect', 'change');
+check('复选框可关闭自动拾取', game.autoCollect === false);
+
 /* ================= 测试 10：结算面板 ================= */
 game.state = STATE.PLAYING;
 game.stats = { killed: 7, planted: 9, sunCollected: 300, score: 500, waves: 5, leaked: 0 };

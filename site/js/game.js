@@ -48,6 +48,9 @@ class Game {
 
     this.onStateChange = () => {};
     this.onFinish = () => {};
+
+    // 自动拾取阳光（从本地设置读取）
+    this.autoCollect = Game.loadAutoCollect();
   }
 
   resetGrid() {
@@ -128,6 +131,7 @@ class Game {
 
     this.checkMines();
     this.updateSkySun(now);
+    if (this.autoCollect) this.autoCollectSuns();
 
     // 清理
     this.plants = this.plants.filter(p => {
@@ -247,6 +251,30 @@ class Game {
     // 所有波次已放出，等场上僵尸清空
     const alive = this.zombies.some(z => !z.dead && !z.reachedHouse);
     if (!alive) this.finish(true);
+  }
+
+  /* ---------------- 自动拾取阳光 ---------------- */
+  setAutoCollect(on) {
+    this.autoCollect = !!on;
+    try { localStorage.setItem('pvz-web-autocollect', this.autoCollect ? '1' : '0'); } catch (e) {}
+    return this.autoCollect;
+  }
+
+  static loadAutoCollect() {
+    try {
+      const v = localStorage.getItem('pvz-web-autocollect');
+      return v === null ? false : v === '1';   // 默认关闭
+    } catch (e) { return false; }
+  }
+
+  /** 自动收集已落地（或下落中）的阳光，带少量延迟更自然 */
+  autoCollectSuns() {
+    for (const s of this.suns) {
+      if (s.collected) continue;
+      if (s.age < 0.35) continue;              // 刚出现时给玩家看清的机会
+      if (s.falling && s.y < s.targetY - 120) continue;  // 快落地再收
+      this.collectSun(s);
+    }
   }
 
   /* ================= 阳光 ================= */

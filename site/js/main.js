@@ -154,6 +154,27 @@
   const helpOverlay = document.getElementById('help-overlay');
   const openHelp = () => { Sound.unlock(); helpOverlay.classList.remove('hidden'); if (game.state === STATE.PLAYING) togglePause(); };
   const closeHelp = () => helpOverlay.classList.add('hidden');
+
+  /* ---------------- 自动拾取阳光 ---------------- */
+  const autoBtn = document.getElementById('btn-auto');
+  const autoToggle = document.getElementById('toggle-autocollect');
+
+  function syncAutoUI() {
+    const on = game.autoCollect;
+    if (autoBtn) {
+      autoBtn.classList.toggle('active', on);
+      autoBtn.title = on ? '自动拾取阳光：已开启 (G)' : '自动拾取阳光：已关闭 (G)';
+    }
+    if (autoToggle) autoToggle.checked = on;
+  }
+  function setAuto(on) {
+    game.setAutoCollect(on);
+    syncAutoUI();
+    game.toast(on ? '已开启自动拾取阳光' : '已关闭自动拾取阳光');
+  }
+  if (autoBtn) autoBtn.addEventListener('click', () => { Sound.unlock(); setAuto(!game.autoCollect); });
+  if (autoToggle) autoToggle.addEventListener('change', () => setAuto(autoToggle.checked));
+  syncAutoUI();
   document.getElementById('btn-help').addEventListener('click', openHelp);
   document.getElementById('btn-help2').addEventListener('click', openHelp);
   helpOverlay.addEventListener('click', e => {
@@ -215,6 +236,7 @@
       return;
     }
     if (k === 's' && game.state === STATE.PLAYING) { game.toggleShovel(); return; }
+    if (k === 'g') { setAuto(!game.autoCollect); return; }
     if (k === 'h') { openHelp(); return; }
 
     if (game.state === STATE.PLAYING && /^[1-9]$/.test(k)) {

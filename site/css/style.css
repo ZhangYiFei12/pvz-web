@@ -371,6 +371,57 @@ kbd {
 .help-grid p  { font-size: 12.5px; line-height: 1.6; color: #ddd0b8; }
 .help-grid b  { color: #fff; }
 
+/* ---------------- 开关（自动拾取阳光） ---------------- */
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(109, 84, 8, .55);
+  cursor: pointer;
+  user-select: none;
+}
+.switch-row input {
+  position: absolute;
+  opacity: 0;
+  width: 0; height: 0;
+}
+.switch-track {
+  position: relative;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 20px;
+  border-radius: 10px;
+  background: #1a0f05;
+  border: 2px solid #6d5408;
+  transition: background .18s, border-color .18s;
+}
+.switch-knob {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #8a7a5c;
+  transition: transform .18s, background .18s;
+}
+.switch-row input:checked + .switch-track {
+  background: #4e8b28;
+  border-color: #b6ff87;
+}
+.switch-row input:checked + .switch-track .switch-knob {
+  transform: translateX(18px);
+  background: #eaffd6;
+}
+.switch-row input:focus-visible + .switch-track {
+  box-shadow: 0 0 0 3px rgba(126, 200, 80, .5);
+}
+.switch-label {
+  font-size: 12.5px;
+  color: #ddd0b8;
+  font-weight: 600;
+}
+
 /* ---------------- 结算 ---------------- */
 #result-title { font-size: 28px; }
 #result-title.win  { color: #8ce06a; text-shadow: 0 0 20px rgba(126,200,80,.6); }

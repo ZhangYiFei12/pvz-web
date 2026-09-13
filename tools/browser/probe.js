@@ -86,12 +86,82 @@ setTimeout(() => {
     // --- 僵尸绘制验证 ---
     G.suns.length = 0;
     G.zombies.length = 0;
-    const z = new (G.zombies.constructor === Array ? Object : Object)();
     G.spawnWave('basic*1');
     G.zombies.forEach(zz => { zz.x = 500; });
     R.draw(G);
     const zPx = at(500, _CFG.TOP_OFFSET + _CFG.CELL_H / 2 + 6);
     check('僵尸位置有内容绘制', zPx.a > 0, `rgb(${zPx.r},${zPx.g},${zPx.b})`);
+
+    /* ---------- 对比度验证：单位与草坪底色的亮度差 ---------- */
+    const lum = c => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+
+    // 草坪底色（无单位区域）
+    const clearBoard = () => {
+      G.plants.length = 0; G.zombies.length = 0;
+      G.suns.length = 0; G.projectiles.length = 0;
+      G.grid = Array.from({ length: 5 }, () => Array(9).fill(null));
+    };
+    clearBoard();
+    R.draw(G);
+    const bg = at(_CFG.HUD_W + _CFG.CELL_W * 4.5, _CFG.TOP_OFFSET + _CFG.CELL_H * 4.5);
+
+    // 僵尸所在区域平均亮度 vs 背景
+    G.spawnWave('basic*3');
+    G.zombies.forEach(zz => { zz.x = 500; zz.y = _CFG.TOP_OFFSET + _CFG.CELL_H / 2 + 6; });
+    R.draw(G);
+    let zLum = 0, n = 0;
+    for (let dx = -18; dx <= 18; dx += 6) {
+      for (let dy = -20; dy <= 20; dy += 10) {
+        const c = at(500 + dx, _CFG.TOP_OFFSET + _CFG.CELL_H / 2 + 6 + dy);
+        zLum += lum(c); n++;
+      }
+    }
+    zLum /= n;
+    const bgLum = lum(bg);
+    check('僵尸与草坪有明显亮度差', Math.abs(zLum - bgLum) > 18,
+          `僵尸=${zLum.toFixed(0)} 草坪=${bgLum.toFixed(0)} 差=${Math.abs(zLum - bgLum).toFixed(0)}`);
+
+    // 豌豆子弹亮度和饱和度（应在草坪上突出）
+    G.zombies.length = 0; G.projectiles.length = 0;
+    G.sun = 9999;
+    G.selected = 'peashooter'; G.cooldowns = {}; G.tryPlant(2, 2);
+    const shooter = G.plants[G.plants.length - 1];
+    check('射手已就位（豌豆测试前置条件）', !!shooter, 'plants=' + G.plants.length + ' grid22=' + !!G.grid[2][2]);
+    G.spawnProjectile(shooter, 500, _CFG.TOP_OFFSET + _CFG.CELL_H * 2.5 - 14);
+    R.draw(G);
+    const pea = at(500, _CFG.TOP_OFFSET + _CFG.CELL_H * 2.5 - 14);
+    const peaSat = Math.max(pea.r, pea.g, pea.b) - Math.min(pea.r, pea.g, pea.b);
+    check('豌豆子弹色彩鲜明（有饱和度）', peaSat > 40 || pea.g > pea.r + 30,
+          `rgb(${pea.r},${pea.g},${pea.b}) 饱和=${peaSat}`);
+
+    // 阳光亮度应显著高于草坪
+    G.projectiles.length = 0; G.suns.length = 0;
+    G.plants.length = 0; G.grid = Array.from({ length: 5 }, () => Array(9).fill(null));
+    G.suns.push(new Sun(300, 300, 300, 'plant'));
+    R.draw(G);
+    const sunLum = lum(at(300, 300));
+    check('阳光明显比草坪亮', sunLum - bgLum > 40,
+          `阳光=${sunLum.toFixed(0)} 草坪=${bgLum.toFixed(0)}`);
+
+    // --- 自动拾取功能（真实 UI） ---
+    const autoBtnEl = document.getElementById('btn-auto');
+    check('自动拾取按钮存在', !!autoBtnEl);
+    check('默认关闭', G.autoCollect === false);
+    autoBtnEl.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    check('点击后开启', G.autoCollect === true);
+    check('按钮高亮', autoBtnEl.classList.contains('active'));
+    // 真实跑一段时间，验证阳光被自动收走
+    G.suns.length = 0;
+    G.sun = 0;
+    for (let i = 0; i < 5; i++) {
+      const s = new Sun(200 + i * 40, 350, 350, 'plant');
+      s.age = 1;
+      G.suns.push(s);
+    }
+    for (let i = 0; i < 60; i++) G.update(1 / 60, performance.now() + i * 16);
+    check('自动拾取真实生效', G.sun >= 125, '阳光=' + G.sun);
+    autoBtnEl.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    check('再次点击关闭', G.autoCollect === false);
 
     // --- 小推车绘制验证 ---
     R.draw(G);

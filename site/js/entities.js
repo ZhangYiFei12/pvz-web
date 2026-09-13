@@ -306,6 +306,7 @@ class Sun {
     this.life = 1;
     this.collected = false;
     this.collectT = 0;
+    this.age = 0;                 // 存在时长（秒），供自动拾取延时使用
     this.fromX = x; this.fromY = y;
     this.phase = Math.random() * Math.PI * 2;
     this.falling = source === 'sky';
@@ -315,6 +316,7 @@ class Sun {
 
   update(dt, game) {
     const now = performance.now();
+    this.age += dt;
 
     if (this.collected) {
       this.collectT += dt * 2.4;
