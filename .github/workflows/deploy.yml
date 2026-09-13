@@ -41,12 +41,22 @@ jobs:
     name: Deploy to Cloudflare Pages
     needs: test
     runs-on: ubuntu-latest
+    # 未配置 Secret 时自动跳过，避免每次推送都报红
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.CF_PAGES_ENABLED == 'true' }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      - name: 检查 Secret 是否就绪
+        id: check
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ] || [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            echo "::error::缺少 CLOUDFLARE_API_TOKEN 或 CLOUDFLARE_ACCOUNT_ID，请在仓库 Settings → Secrets and variables → Actions 中添加"
+            exit 1
+          fi
 
       - name: 发布到 Cloudflare Pages
         uses: cloudflare/wrangler-action@v3

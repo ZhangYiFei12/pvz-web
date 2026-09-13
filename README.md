@@ -1,5 +1,8 @@
 # 🌻 植物大战僵尸 · 网页版
 
+> **🎮 在线试玩：<https://pvz-web-br3.pages.dev/>**
+> 源码：<https://github.com/ZhangYiFei12/pvz-web>
+
 一个用 **纯前端 Canvas + 原生 JavaScript** 实现的植物大战僵尸网页游戏。
 **零运行时依赖、无构建步骤**，克隆下来直接打开就能玩，可一键部署到 Cloudflare Pages。
 
@@ -43,27 +46,36 @@ python -m http.server 8000 --directory site
 
 ## ☁️ 部署到 Cloudflare Pages
 
+**当前线上地址：<https://pvz-web-br3.pages.dev/>**
+
 只有 **`site/` 目录**会被发布（`wrangler.toml` 中 `pages_build_output_dir = "site"`），
 所以 `tools/`、`README.md` 等开发文件不会出现在线上站点。
 项目**无需 build command**。
 
-### 方式 A：Git 集成（推荐 · 推送即自动部署）
+### 方式 A：命令行直接上传（当前采用）
 
-1. 推送到 GitHub：
+本项目已经在 Cloudflare 上创建了 Pages 项目 `pvz-web`，
+日常更新只需：
 
-   ```bash
-   cd pvz-web
-   git init
-   git add .
-   git commit -m "feat: 网页版植物大战僵尸"
-   git branch -M main
-   git remote add origin https://github.com/<你的用户名>/pvz-web.git
-   git push -u origin main
-   ```
+```bash
+npm run deploy      # = wrangler pages deploy site --project-name pvz-web
+```
 
-2. 打开 [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
+首次在新机器上部署需先授权：
 
-3. 选择 `pvz-web` 仓库，按下表填写：
+```bash
+npx wrangler login            # 浏览器授权
+npx wrangler pages project create pvz-web --production-branch main --force
+```
+
+> `--force` 仅在创建项目时需要（Wrangler 4.131+ 默认会委托给 Workers）。
+> 项目创建后，后续 `pages deploy` 不需要 `--force`。
+
+### 方式 B：Git 集成（推送即自动部署）
+
+1. 打开 [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → 选择 `pvz-web` → **Settings** → **Builds & deployments** → **Connect to Git**
+
+2. 选择 `pvz-web` 仓库，按下表填写：
 
    | 配置项 | 值 |
    |--------|-----|
@@ -71,36 +83,42 @@ python -m http.server 8000 --directory site
    | Build command | **（留空）** |
    | Build output directory | `site` |
 
-4. 点击 **Save and Deploy**。之后每次 `git push` 都会自动重新部署。
+3. 保存后，每次 `git push` 都会自动重新部署。
 
-> 若在仓库根目录执行 `wrangler` 时它自动读取了 `wrangler.toml`，
-> 则 build output directory 会自动识别为 `site`。
+### 方式 C：GitHub Actions 自动部署（需额外配置）
 
-### 方式 B：命令行直接上传
+`.github/workflows/deploy.yml` 已就绪：**先跑全部测试，测试通过才部署**。
+
+该工作流默认**不启用**（避免未配置 Secret 时误报失败）。启用步骤：
+
+1. 在仓库 **Settings → Secrets and variables → Actions** 添加两个 Secret：
+
+   | Secret 名称 | 从哪里获取 |
+   |-------------|-----------|
+   | `CLOUDFLARE_API_TOKEN` | Cloudflare → My Profile → API Tokens → Create Token，模板选 **Edit Cloudflare Workers** 或自定义权限 **Cloudflare Pages: Edit** |
+   | `CLOUDFLARE_ACCOUNT_ID` | `cbe14bf39d3ffca77025e06225cd0b46`（Cloudflare 控制台右侧栏也有） |
+
+2. 在 **Settings → Secrets and variables → Actions → Variables** 添加一个变量：
+
+   | 变量名 | 值 |
+   |--------|-----|
+   | `CF_PAGES_ENABLED` | `true` |
+
+也可以随时在 **Actions → Deploy to Cloudflare Pages → Run workflow** 手动触发（手动触发不受该变量限制）。
+
+> ⚠️ 若已用方式 A 或 B，通常不需要方式 C，以免重复部署。
+
+### 网络受限环境下推送 GitHub
+
+若 `github.com:443` 被阻断但 `api.github.com` 可用（常见于国内网络），
+可改用 **SSH over 443**：
 
 ```bash
-npx wrangler login                 # 浏览器授权一次
-npm run deploy                     # = wrangler pages deploy site --project-name pvz-web
+git remote set-url origin ssh://git@ssh.github.com:443/<用户名>/pvz-web.git
+git push -u origin main
 ```
 
-预览环境（不覆盖生产）：
-
-```bash
-npm run deploy:preview
-```
-
-### 方式 C：GitHub Actions 自动部署
-
-`.github/workflows/deploy.yml` 已就绪：先跑全部测试，测试通过才部署。
-在仓库 **Settings → Secrets and variables → Actions** 添加两个 Secret：
-
-| Secret 名称 | 从哪里获取 |
-|-------------|-----------|
-| `CLOUDFLARE_API_TOKEN` | Cloudflare → My Profile → API Tokens → Create Token，权限选 **Cloudflare Pages: Edit** |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare Dashboard 右侧栏的 Account ID |
-
-> ⚠️ 若已用方式 A 的 Git 集成，Cloudflare 自身即可自动部署，
-> 此时可忽略方式 C，或删除该 workflow 以免重复部署。
+可先用 `ssh -T -p 443 git@ssh.github.com` 验证连通性。
 
 ---
 
@@ -147,6 +165,7 @@ npm run test:smoke    # 逻辑层：46 项单元检查 + 完整游戏循环
 npm run test:dom      # UI 层：加载 main.js，模拟点击/键盘，56 项集成检查
 npm run test:browser  # 真实浏览器：headless Edge/Chrome，36 项像素级断言
 npm run test:balance  # 平衡性：AI 自动试玩，输出各关通关率
+npm run test:live     # 对线上 Cloudflare 站点跑真实浏览器验收
 npm run test:all      # 全部
 ```
 
@@ -155,6 +174,7 @@ npm run test:all      # 全部
 | `smoke-test.cjs` | 桩化 DOM/Canvas，断言核心逻辑（含小推车、炸弹、大嘴花、胜负判定） |
 | `dom-test.cjs` | 加载 `main.js`，断言 UI 交互（选卡、种植、铲子、暂停、存档、结算） |
 | `browser-test.cjs` | 起本地服务 + headless 浏览器，断言真实渲染像素与**对比度指标** |
+| `live-verify.cjs` | 对**线上已部署站点**跑同一套浏览器断言（`npm run test:live`） |
 | `winrate.cjs` | AI 自动试玩，统计各关通关率 |
 | `balance-sim.cjs` | 会玩 AI 的逐关试玩报告 |
 | `diagnose.cjs` | 防线强度 / 阳光经济曲线诊断 |

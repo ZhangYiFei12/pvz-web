@@ -19,8 +19,9 @@
     "test:dom": "node tools/dom-test.cjs .",
     "test:browser": "node tools/browser-test.cjs .",
     "test:balance": "node tools/winrate.cjs",
-    "test:all": "npm test && npm run test:balance",
+    "test:all": "npm test && npm run test:balance && npm run test:live",
     "deploy": "npx --yes wrangler pages deploy site --project-name pvz-web",
-    "deploy:preview": "npx --yes wrangler pages deploy site --project-name pvz-web --branch preview"
+    "deploy:preview": "npx --yes wrangler pages deploy site --project-name pvz-web --branch preview",
+    "test:live": "node tools/live-verify.cjs https://pvz-web-br3.pages.dev"
   }
 }
