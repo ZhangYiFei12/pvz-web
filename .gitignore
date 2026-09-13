@@ -1,0 +1,27 @@
+# ---- 依赖 ----
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# ---- 构建产物 ----
+dist/
+.wrangler/
+.cache/
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- 日志 / 临时 ----
+*.log
+npm-debug.log*
+.tmp/
+temp/
+
+# ---- 测试临时产物 ----
+__probe*.html
+__shot-*.png

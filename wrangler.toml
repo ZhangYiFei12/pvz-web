@@ -1,0 +1,23 @@
+name = "pvz-web"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "site"
+
+# ---------------------------------------------------------------
+# 纯静态站点：无需构建步骤
+#
+# 只有 site/ 目录会被发布，因此 tools/ 测试脚本、README 等
+# 开发文件不会出现在线上站点里。
+#
+# 部署方式二选一：
+#
+# 1) Git 集成（推荐，推送即自动部署）
+#    Cloudflare Dashboard → Workers & Pages → Create → Pages
+#    → Connect to Git → 选择本仓库
+#      Framework preset:        None
+#      Build command:           （留空）
+#      Build output directory:  site
+#
+# 2) 命令行直接上传
+#    npm run deploy
+#    （= npx wrangler pages deploy site --project-name pvz-web）
+# ---------------------------------------------------------------

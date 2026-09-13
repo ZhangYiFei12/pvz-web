@@ -1,0 +1,26 @@
+{
+  "name": "pvz-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "网页版植物大战僵尸 — 纯前端 Canvas 实现，零运行时依赖，可部署到 Cloudflare Pages",
+  "keywords": [
+    "plants-vs-zombies",
+    "game",
+    "canvas",
+    "html5",
+    "cloudflare-pages"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "dev": "npx --yes serve -l 5173 site",
+    "start": "npx --yes serve -l 5173 site",
+    "test": "node tools/smoke-test.cjs . && node tools/dom-test.cjs . && node tools/browser-test.cjs .",
+    "test:smoke": "node tools/smoke-test.cjs .",
+    "test:dom": "node tools/dom-test.cjs .",
+    "test:browser": "node tools/browser-test.cjs .",
+    "test:balance": "node tools/winrate.cjs",
+    "test:all": "npm test && npm run test:balance",
+    "deploy": "npx --yes wrangler pages deploy site --project-name pvz-web",
+    "deploy:preview": "npx --yes wrangler pages deploy site --project-name pvz-web --branch preview"
+  }
+}

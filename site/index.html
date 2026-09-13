@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>植物大战僵尸 · 网页版</title>
+<meta name="description" content="纯前端植物大战僵尸网页版，Canvas 实现，支持关卡、波次、多植物多僵尸，零依赖。">
+<meta name="theme-color" content="#2d5016">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌻</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ===== 顶部信息栏 ===== -->
+  <header id="hud">
+    <div class="hud-left">
+      <div id="sun-box" title="阳光">
+        <span class="sun-icon">☀️</span>
+        <span id="sun-count">50</span>
+      </div>
+      <button id="btn-shovel" class="hud-btn" title="铲子：移除植物 (快捷键 S)">🔨</button>
+    </div>
+
+    <div class="hud-center">
+      <div id="level-badge">第 1 关</div>
+      <div id="progress-wrap">
+        <div id="progress-bar"></div>
+        <div id="progress-flags"></div>
+      </div>
+    </div>
+
+    <div class="hud-right">
+      <button id="btn-pause" class="hud-btn" title="暂停 (空格)">⏸️</button>
+      <button id="btn-sound" class="hud-btn" title="音效开关">🔊</button>
+      <button id="btn-help" class="hud-btn" title="帮助 (H)">❓</button>
+    </div>
+  </header>
+
+  <!-- ===== 种子卡槽 ===== -->
+  <div id="seedbar"></div>
+
+  <!-- ===== 游戏画布 ===== -->
+  <div id="stage">
+    <canvas id="game"></canvas>
+
+    <!-- 提示气泡 -->
+    <div id="toast" class="hidden"></div>
+
+    <!-- 暂停遮罩 -->
+    <div id="pause-overlay" class="overlay hidden">
+      <div class="panel">
+        <h2>游戏暂停</h2>
+        <p class="muted">按 <kbd>空格</kbd> 或点击下方按钮继续</p>
+        <div class="btn-row">
+          <button class="btn primary" data-act="resume">继续游戏</button>
+          <button class="btn" data-act="restart">重新开始</button>
+          <button class="btn" data-act="menu">返回主菜单</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 主菜单 ===== -->
+  <div id="menu-overlay" class="overlay">
+    <div class="panel wide">
+      <h1 class="title">🌻 植物大战僵尸 🧟</h1>
+      <p class="subtitle">网页版 · 纯前端 Canvas 实现 · 零依赖</p>
+
+      <div id="level-select"></div>
+
+      <div class="btn-row">
+        <button id="btn-continue" class="btn primary hidden">继续上次进度</button>
+        <button id="btn-help2" class="btn">玩法说明</button>
+      </div>
+
+      <div class="best-box">
+        <span>历史最高：</span>
+        <strong id="best-score">0 分</strong>
+        <span class="sep">·</span>
+        <span>已解锁：</span>
+        <strong id="best-level">1 关</strong>
+      </div>
+
+      <footer class="credits">
+        基于 GitHub + Cloudflare Pages 部署 · 键盘 <kbd>1</kbd>-<kbd>6</kbd> 选卡 / <kbd>空格</kbd> 暂停
+      </footer>
+    </div>
+  </div>
+
+  <!-- ===== 结算面板 ===== -->
+  <div id="result-overlay" class="overlay hidden">
+    <div class="panel">
+      <h2 id="result-title">胜利！</h2>
+      <div id="result-stats"></div>
+      <div class="btn-row" id="result-actions"></div>
+    </div>
+  </div>
+
+  <!-- ===== 帮助面板 ===== -->
+  <div id="help-overlay" class="overlay hidden">
+    <div class="panel wide">
+      <h2>玩法说明</h2>
+      <div class="help-grid">
+        <section>
+          <h3>🎯 目标</h3>
+          <p>僵尸会从右侧进攻。用植物挡住它们，别让任何僵尸走到最左边进屋。撑过该关卡的所有波次即获胜。</p>
+        </section>
+        <section>
+          <h3>☀️ 阳光</h3>
+          <p>种下<b>向日葵</b>可持续产出阳光，天上也会掉落阳光，点击即可收集。阳光是所有植物的“钱”。</p>
+        </section>
+        <section>
+          <h3>🌱 种植</h3>
+          <p>点击顶部种子卡选中植物 → 点击草坪格子种植。再次点击可取消。<b>铲子 🔨</b> 可移除已有植物。</p>
+        </section>
+        <section>
+          <h3>⌨️ 快捷键</h3>
+          <p><kbd>1</kbd>-<kbd>6</kbd> 选择种子卡 · <kbd>S</kbd> 铲子 · <kbd>空格</kbd> 暂停 · <kbd>Esc</kbd> 取消选择</p>
+        </section>
+        <section>
+          <h3>🧟 僵尸类型</h3>
+          <p><b>普通僵尸</b>：基础单位。<b>路障僵尸</b>：血量翻倍。<b>铁桶僵尸</b>：血量极高。<b>撑杆僵尸</b>：会跳过第一株植物。</p>
+        </section>
+        <section>
+          <h3>💡 小技巧</h3>
+          <p>前两列优先种向日葵滚经济；<b>坚果墙</b>放前排抗伤；<b>樱桃炸弹</b>可清掉一波密集僵尸；<b>寒冰射手</b>能减速，配合豌豆输出极高。</p>
+        </section>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" data-act="close-help">知道了</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/entities.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/game.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
