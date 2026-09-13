@@ -25,3 +25,6 @@ temp/
 # ---- 测试临时产物 ----
 __probe*.html
 __shot-*.png
+
+# ---- 临时验证产物 ----
+.live-probe.html
