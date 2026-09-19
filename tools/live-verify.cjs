@@ -1,66 +1,110 @@
-/* 对线上 Cloudflare 站点跑真实浏览器验收（不依赖本地服务器） */
+#!/usr/bin/env node
+/* ===========================================================
+   live-verify.cjs — 对线上已部署站点跑真实浏览器验收
+
+   做法：抓取线上 index.html → 把相对资源路径改写为线上绝对地址
+   → 注入本地探针脚本 → 用本地服务打开（资源仍从线上 CDN 加载）。
+   这样验证的是「真正部署的 HTML + 真正部署的资源」。
+
+   用法: node tools/live-verify.cjs [线上地址]
+   =========================================================== */
+
 const { spawn } = require('child_process');
-const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
+const http = require('http');
+const https = require('https');
 
-const BASE = process.argv[2] || 'https://pvz-web-br3.pages.dev';
-const BROWSER = process.argv[3] || [
-  'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-  'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-].find(p => fs.existsSync(p));
+const BASE = (process.argv[2] || 'https://pvz-web-br3.pages.dev').replace(/\/$/, '');
+const PORT = 8917;
+const PROBE = path.join(__dirname, 'browser', 'probe.js');
 
-if (!BROWSER) { console.log('❌ 未找到浏览器'); process.exit(1); }
+function fetchText(url) {
+  return new Promise((resolve, reject) => {
+    const mod = url.startsWith('https') ? https : http;
+    mod.get(url, res => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return fetchText(new URL(res.headers.location, url).href).then(resolve, reject);
+      }
+      let d = '';
+      res.setEncoding('utf8');
+      res.on('data', c => d += c);
+      res.on('end', () => resolve({ status: res.statusCode, body: d }));
+    }).on('error', reject);
+  });
+}
 
-const get = u => new Promise((res, rej) => {
-  https.get(u, r => { let d = ''; r.on('data', c => d += c); r.on('end', () => res(d)); }).on('error', rej);
-});
+function findBrowser() {
+  return [
+    process.env.CHROME_PATH,
+    'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+    'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
+    'C:/Program Files/Google/Chrome/Application/chrome.exe',
+    '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  ].filter(Boolean).find(p => { try { return fs.existsSync(p); } catch { return false; } });
+}
 
 (async () => {
+  const browser = findBrowser();
+  if (!browser) { console.log('⚠️  未找到 Chrome/Edge，跳过线上验证'); process.exit(0); }
+
   console.log(`🌐 验证线上站点: ${BASE}`);
-  console.log(`🖥️  浏览器: ${path.basename(BROWSER)}\n`);
+  console.log(`🖥️  浏览器: ${path.basename(browser)}\n`);
 
-  const probe = fs.readFileSync(path.join(__dirname, 'browser', 'probe.js'), 'utf8');
+  // 1) 抓取线上首页
+  let index;
+  try {
+    index = await fetchText(BASE + '/');
+  } catch (e) {
+    console.log('❌ 无法访问线上站点:', e.message);
+    process.exit(1);
+  }
+  if (index.status !== 200) { console.log('❌ 首页返回 HTTP', index.status); process.exit(1); }
 
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>live</title>
-<link rel="stylesheet" href="${BASE}/css/style.css"></head><body>
-<div id="menu-overlay"></div><div id="result-overlay" class="hidden"></div>
-<div id="pause-overlay" class="hidden"></div><div id="help-overlay" class="hidden"></div>
-<header id="hud"><div id="sun-box"><span id="sun-count">50</span></div>
-<button id="btn-shovel"></button><button id="btn-pause"></button><button id="btn-sound"></button><button id="btn-auto"></button><button id="btn-help"></button>
-<div id="level-badge"></div><div id="progress-bar"></div><div id="progress-flags"></div></header>
-<div id="seedbar"></div>
-<div id="stage"><canvas id="game"></canvas><div id="toast"></div></div>
-<div id="level-select"></div><div id="best-score"></div><div id="best-level"></div>
-<div id="result-title"></div><div id="result-stats"></div><div id="result-actions"></div>
-<div id="btn-continue"></div><div id="btn-help2"></div><input type="checkbox" id="toggle-autocollect">
-<script src="${BASE}/js/config.js"></script><script src="${BASE}/js/audio.js"></script>
-<script src="${BASE}/js/entities.js"></script><script src="${BASE}/js/renderer.js"></script>
-<script src="${BASE}/js/game.js"></script><script src="${BASE}/js/main.js"></script>
-<script>${probe}</script>
-</body></html>`;
+  let html = index.body;
 
-  const tmp = path.join(os.tmpdir(), 'pvz-live-probe.html');
-  fs.writeFileSync(tmp, html, 'utf8');
-  const tmpUrl = 'file:///' + tmp.replace(/\\/g, '/');
+  // 2) 相对资源路径 → 线上绝对地址（保证加载的是线上 CDN 上的文件）
+  html = html.replace(/(href|src)="(?!https?:|\/\/|data:)([^"]+)"/g,
+    (m, attr, p) => `${attr}="${BASE}/${p.replace(/^\.?\//, '')}"`);
 
-  const dom = await new Promise((res, rej) => {
-    const c = spawn(BROWSER, ['--headless=new', '--disable-gpu', '--no-sandbox',
-      '--window-size=1100,880', '--virtual-time-budget=14000', '--dump-dom', tmpUrl],
-      { stdio: ['ignore', 'pipe', 'ignore'] });
-    let b = '';
-    const t = setTimeout(() => { c.kill(); res(b); }, 90000);
-    c.stdout.on('data', d => b += d);
-    c.on('close', () => { clearTimeout(t); res(b); });
-    c.on('error', rej);
+  // 3) 注入探针（探针本身不部署，从本地读取）
+  const probe = fs.readFileSync(PROBE, 'utf8');
+  html = html.replace('</body>', `<script>${probe}</script>\n</body>`);
+
+  // 4) 本地起服务托管改写后的页面（脚本仍从线上加载）
+  let PAGE = html;
+  const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(PAGE);
   });
+  await new Promise(r => server.listen(PORT, r));
 
-  try { fs.unlinkSync(tmp); } catch (e) {}
+  // 5) 跑 headless 浏览器
+  let dom;
+  try {
+    dom = await new Promise((resolve, reject) => {
+      const c = spawn(browser, ['--headless=new', '--disable-gpu', '--no-sandbox',
+        '--window-size=1100,880', '--virtual-time-budget=14000', '--dump-dom',
+        `http://localhost:${PORT}/`], { stdio: ['ignore', 'pipe', 'ignore'] });
+      let b = '';
+      const t = setTimeout(() => { c.kill(); reject(new Error('浏览器超时')); }, 90000);
+      c.stdout.on('data', d => b += d);
+      c.on('close', () => { clearTimeout(t); resolve(b); });
+      c.on('error', reject);
+    });
+  } catch (e) {
+    console.log('❌ 浏览器执行失败:', e.message);
+    server.close();
+    process.exit(1);
+  }
+  server.close();
 
   const m = dom.match(/data-probe="([\s\S]*?)"/);
-  if (!m) { console.log('❌ 未取到探针结果（线上资源可能加载失败）'); process.exit(1); }
+  if (!m) {
+    console.log('❌ 未取到探针结果（线上资源可能加载失败）');
+    process.exit(1);
+  }
 
   const un = s => s.replace(/&#10;/g, '\n').replace(/&quot;/g, '"')
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
