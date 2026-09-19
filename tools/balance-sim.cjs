@@ -28,7 +28,7 @@ const sandbox = {
 };
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
-['config.js','audio.js','entities.js','renderer.js','game.js'].forEach(f =>
+['config.js', 'audio.js', 'sprites.js', 'sprites-zombie.js', 'entities.js', 'renderer-hud.js', 'renderer.js', 'game.js'].forEach(f =>
   vm.runInContext(fs.readFileSync(path.join('.','site','js',f),'utf8'), sandbox, {filename:f}));
 vm.runInContext('globalThis.__x = { Game, STATE, LEVELS, PLANTS, ZOMBIES, CFG, Grid };', sandbox);
 const { Game, STATE, LEVELS, PLANTS, CFG, Grid } = sandbox.__x;

@@ -28,3 +28,8 @@ __shot-*.png
 
 # ---- 临时验证产物 ----
 .live-probe.html
+
+# ---- 调试产物 ----
+__preview-debug.html
+__play-debug.html
+__play-inline.js

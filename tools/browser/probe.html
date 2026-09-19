@@ -3,20 +3,44 @@
 <head><meta charset="utf-8"><title>gameplay-probe</title>
 <link rel="stylesheet" href="/site/css/style.css"></head>
 <body>
-<div id="menu-overlay"></div><div id="result-overlay" class="hidden"></div>
-<div id="pause-overlay" class="hidden"></div><div id="help-overlay" class="hidden"></div>
-<header id="hud"><div id="sun-box"><span id="sun-count">50</span></div>
-<button id="btn-shovel"></button><button id="btn-pause"></button><button id="btn-sound"></button><button id="btn-auto"></button><button id="btn-help"></button>
-<div id="level-badge"></div><div id="progress-bar"></div><div id="progress-flags"></div></header>
-<div id="seedbar"></div>
-<div id="stage"><canvas id="game"></canvas><div id="toast"></div></div>
-<div id="level-select"></div><div id="best-score"></div><div id="best-level"></div>
-<div id="result-title"></div><div id="result-stats"></div><div id="result-actions"></div>
-<div id="btn-continue"></div><div id="btn-help2"></div>
-<input type="checkbox" id="toggle-autocollect">
-<script src="/site/js/config.js"></script><script src="/site/js/audio.js"></script>
-<script src="/site/js/entities.js"></script><script src="/site/js/renderer.js"></script>
-<script src="/site/js/game.js"></script><script src="/site/js/main.js"></script>
+<div id="stage"><canvas id="game"></canvas><div id="toast" class="hidden"></div>
+  <div id="pause-overlay" class="overlay hidden"><div class="panel">
+    <div class="btn-row">
+      <button class="btn primary" data-act="resume">继续游戏</button>
+      <button class="btn" data-act="restart">重新开始</button>
+      <button class="btn" data-act="menu">返回主菜单</button>
+    </div>
+    <div class="btn-row">
+      <button id="btn-sound" class="btn small">🔊 音效：开</button>
+      <button id="btn-auto" class="btn small">☀️ 自动拾取阳光：关</button>
+    </div>
+  </div></div>
+</div>
+<div id="menu-overlay" class="overlay"><div class="panel wide">
+  <h1 class="title">植物大战僵尸</h1>
+  <div id="level-select"></div>
+  <div class="btn-row"><button id="btn-help2" class="btn">玩法说明</button></div>
+  <div class="best-box"><strong id="best-score">0 分</strong><strong id="best-level">1 关</strong></div>
+</div></div>
+<div id="result-overlay" class="overlay hidden"><div class="panel">
+  <h2 id="result-title"></h2><div id="result-stats"></div><div class="btn-row" id="result-actions"></div>
+</div></div>
+<div id="help-overlay" class="overlay hidden"><div class="panel wide">
+  <div class="help-grid"></div>
+  <label class="switch-row"><input type="checkbox" id="toggle-autocollect">
+  <span class="switch-track"><span class="switch-knob"></span></span>
+  <span class="switch-label">自动拾取阳光</span></label>
+  <div class="btn-row"><button class="btn primary" data-act="close-help">知道了</button></div>
+</div></div>
+<script src="/site/js/config.js"></script>
+<script src="/site/js/audio.js"></script>
+<script src="/site/js/sprites.js"></script>
+<script src="/site/js/sprites-zombie.js"></script>
+<script src="/site/js/entities.js"></script>
+<script src="/site/js/renderer-hud.js"></script>
+<script src="/site/js/renderer.js"></script>
+<script src="/site/js/game.js"></script>
+<script src="/site/js/main.js"></script>
 <script src="/tools/browser/probe.js"></script>
 </body>
 </html>

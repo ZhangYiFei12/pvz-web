@@ -14,6 +14,9 @@ function makeCtx() {
     translate: noop, rotate: noop, clearRect: noop, fillRect: noop,
     strokeRect: noop, beginPath: noop, closePath: noop, moveTo: noop,
     lineTo: noop, arc: noop, ellipse: noop, fill: noop, stroke: noop,
+    quadraticCurveTo: noop, bezierCurveTo: noop, arcTo: noop, rect: noop,
+    clip: noop, setLineDash: noop, drawImage: noop, createPattern: () => null,
+    transform: noop, resetTransform: noop, getLineDash: () => [],
     fillText: noop, strokeText: noop, clip: noop, createLinearGradient: () => ({ addColorStop: noop }),
     createRadialGradient: () => ({ addColorStop: noop }),
     measureText: () => ({ width: 10 }),
@@ -106,7 +109,7 @@ sandbox.self = sandbox;
 vm.createContext(sandbox);
 
 /* ---------- 加载脚本（顺序同 index.html） ---------- */
-const files = ['config.js', 'audio.js', 'entities.js', 'renderer.js', 'game.js'];
+const files = ['config.js', 'audio.js', 'sprites.js', 'sprites-zombie.js', 'entities.js', 'renderer-hud.js', 'renderer.js', 'game.js'];
 for (const f of files) {
   const code = fs.readFileSync(path.join(ROOT, 'site', 'js', f), 'utf8');
   try {
@@ -119,7 +122,7 @@ for (const f of files) {
 console.log('✅ 全部脚本加载成功');
 
 /* ---------- 词法声明（class/const）不会挂到 sandbox 上，显式导出 ---------- */
-vm.runInContext(`globalThis.__x = { Game, STATE, LEVELS, PLANTS, ZOMBIES, Sun, Plant, Zombie, Projectile, Particle, FloatText, CFG, Grid, Sound, Renderer, parseTypes, endlessWave, PLANTS: PLANTS };`, sandbox, { filename: 'exports.js' });
+vm.runInContext(`globalThis.__x = { Game, STATE, LEVELS, PLANTS, ZOMBIES, Sun, Plant, Zombie, Projectile, Particle, FloatText, CFG, UI, Grid, Sound, Renderer, Hud, Sprites, ZombieArt, parseTypes, endlessWave, seedRects, shovelRect, pauseRect, hitRect };`, sandbox, { filename: 'exports.js' });
 
 /* ---------- 构造游戏并模拟 ---------- */
 const { Game, STATE, LEVELS, PLANTS, ZOMBIES, Sun, Plant, Zombie, Renderer } = sandbox.__x;
@@ -215,14 +218,40 @@ console.log('\n--- 单元检查 ---');
 const checks = [];
 function check(name, cond) { checks.push({ name, ok: !!cond }); }
 
-check('CFG 尺寸计算', sandbox.__x.CFG.W === 78 + 9 * 80 && sandbox.__x.CFG.H === 74 + 5 * 92);
+check('CFG 尺寸计算', sandbox.__x.CFG.W === 108 + 9 * 96 && sandbox.__x.CFG.H === 96 + 5 * 100 + 64);
 check('parseTypes 解析', JSON.stringify(sandbox.__x.parseTypes('basic*2,cone*1')) === JSON.stringify(['basic', 'basic', 'cone']));
 check('parseTypes 容错', sandbox.__x.parseTypes('unknown*3,,garbage').length === 0);
 check('endlessWave 合法', (() => { for (let i = 1; i <= 40; i++) { const w = sandbox.__x.endlessWave(i); if (!w.types || !w.interval) return false; sandbox.__x.parseTypes(w.types); } return true; })());
-check('Grid.pick 边界', sandbox.__x.Grid.pick(10, 10) === null && sandbox.__x.Grid.pick(100, 100).col === 0);
+check('Grid.pick 边界', sandbox.__x.Grid.pick(10, 10) === null && sandbox.__x.Grid.pick(120, 120).col === 0);
 check('Grid.pick 右越界', sandbox.__x.Grid.pick(sandbox.__x.CFG.W + 10, 200) === null);
-check('所有植物定义完整', Object.values(PLANTS).every(p => p.id && p.name && p.emoji && typeof p.cost === 'number' && p.hp > 0));
-check('所有僵尸定义完整', Object.values(ZOMBIES).every(z => z.id && z.name && z.emoji && z.hp > 0 && z.speed > 0));
+check('HUD 区域不算草坪', sandbox.__x.Grid.pick(60, 40) === null);
+check('种子卡布局可用', (() => {
+  const r = sandbox.__x.seedRects(sandbox.__x.LEVELS[0].plants);
+  return r.length === sandbox.__x.LEVELS[0].plants.length &&
+         r.every(x => x.x > 0 && x.x + x.w < sandbox.__x.CFG.W) &&
+         r.every((x, i) => i === 0 || x.x > r[i-1].x);
+})());
+check('铲子不重叠种子卡', (() => {
+  const L = sandbox.__x.LEVELS[2].plants;
+  const rs = sandbox.__x.seedRects(L);
+  const sh = sandbox.__x.shovelRect(L);
+  return rs.every(x => x.x + x.w <= sh.x) && sh.x + sh.w < sandbox.__x.CFG.W;
+})());
+check('暂停按钮在右上角', (() => {
+  const p = sandbox.__x.pauseRect();
+  return p.x + p.w <= sandbox.__x.CFG.W && p.y < sandbox.__x.CFG.TOP_OFFSET;
+})());
+check('9 种植物都有对应绘制', sandbox.__x.Sprites.PLANT_IDS.length >= 9);
+check('全部僵尸变体都能绘制', (() => {
+  const ctx = sandbox.__x.Renderer.ctx;
+  if (!ctx) return false;
+  return Object.keys(sandbox.__x.ZOMBIES).every(id => {
+    try { sandbox.__x.ZombieArt.draw(ctx, id, 0, { walk: 1 }); return true; }
+    catch (e) { return false; }
+  });
+})());
+check('所有植物定义完整', Object.values(PLANTS).every(p => p.id && p.name && typeof p.cost === 'number' && p.hp > 0 && p.cd > 0));
+check('所有僵尸定义完整', Object.values(ZOMBIES).every(z => z.id && z.name && z.hp > 0 && z.speed > 0 && z.damage > 0));
 check('关卡植物 id 均存在', LEVELS.every(l => l.plants.every(id => !!PLANTS[id])));
 check('关卡波次僵尸 id 均存在', LEVELS.every(l => l.waves.every(w => sandbox.__x.parseTypes(w.types).length >= 0)));
 check('关卡波次时间递增', LEVELS.every(l => l.waves.every((w, i) => i === 0 || w.at > l.waves[i - 1].at)));

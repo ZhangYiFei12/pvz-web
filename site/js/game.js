@@ -48,6 +48,11 @@ class Game {
 
     this.onStateChange = () => {};
     this.onFinish = () => {};
+    this.onPauseRequest = null;
+
+    this.sunBump = 0;
+    this.introUntil = 0;
+    this.introDuration = 2600;
 
     // 自动拾取阳光（从本地设置读取）
     this.autoCollect = Game.loadAutoCollect();
@@ -96,6 +101,8 @@ class Game {
 
     this.state = STATE.PLAYING;
     this.lastFrame = performance.now();
+    this.introUntil = this.lastFrame + this.introDuration;
+    this.sunBump = 0;
     this.onStateChange();
   }
 
@@ -285,7 +292,7 @@ class Game {
 
     const x = CFG.HUD_W + 40 + Math.random() * (CFG.COLS * CFG.CELL_W - 80);
     const targetY = CFG.TOP_OFFSET + 20 + Math.random() * (CFG.ROWS * CFG.CELL_H - 60);
-    this.suns.push(new Sun(x, CFG.TOP_OFFSET - 30, targetY, 'sky'));
+    this.suns.push(new Sun(x, CFG.TOP_OFFSET + 6, targetY, 'sky'));
   }
 
   spawnSun(x, y, source) {
@@ -309,12 +316,7 @@ class Game {
   }
 
   bumpSunBox() {
-    const el = document.getElementById('sun-count');
-    if (!el) return;
-    const box = document.getElementById('sun-box');
-    box.classList.remove('bump');
-    void box.offsetWidth;
-    box.classList.add('bump');
+    this.sunBump = performance.now();   // 由画布 HUD 读取做缩放动画
   }
 
   /* ================= 种植 / 铲除 ================= */
@@ -560,69 +562,38 @@ class Game {
   }
 
   onPointerDown(x, y) {
+    if (this.state !== STATE.PLAYING && this.state !== STATE.PAUSED) return;
+
+    // 1) 暂停按钮（任何状态下都可点）
+    if (hitRect(pauseRect(), x, y)) { if (this.onPauseRequest) this.onPauseRequest(); return; }
     if (this.state !== STATE.PLAYING) return;
 
-    // 先判定是否点中阳光（优先级最高）
+    // 2) 阳光（优先级高于 HUD，因为阳光可能飘到面板区域）
     for (let i = this.suns.length - 1; i >= 0; i--) {
       const s = this.suns[i];
       if (!s.collected && s.hitTest(x, y)) { this.collectSun(s); return; }
     }
 
+    // 3) 顶部 HUD：种子卡 / 铲子
+    if (y <= UI.panel.y + UI.panel.h) {
+      const rects = seedRects(this.level.plants);
+      for (const r of rects) {
+        if (hitRect(r, x, y)) { this.selectPlant(r.id); return; }
+      }
+      if (hitRect(shovelRect(this.level.plants), x, y)) { this.toggleShovel(); return; }
+      return;
+    }
+
+    // 4) 草坪格子
     const cell = Grid.pick(x, y);
     if (!cell) return;
-
-    if (this.shovelMode) { this.tryShovel(cell.col, cell.row); this.syncUI(); return; }
+    if (this.shovelMode) { this.tryShovel(cell.col, cell.row); return; }
     if (this.selected) { this.tryPlant(cell.col, cell.row); return; }
   }
 
-  /* ================= UI 同步 ================= */
+  /* ================= UI 同步（HUD 已画进画布，此处仅保留钩子） ================= */
   syncUI() {
-    const sunEl = document.getElementById('sun-count');
-    if (sunEl) sunEl.textContent = this.sun;
-
-    // 种子卡状态
-    document.querySelectorAll('.seed').forEach(el => {
-      const id = el.dataset.plant;
-      const def = PLANTS[id];
-      const cdLeft = Math.max(0, (this.cooldowns[id] || 0) - performance.now());
-      const mask = el.querySelector('.cd-mask');
-      if (mask) {
-        const ratio = def.cd > 0 ? cdLeft / def.cd : 0;
-        mask.style.transform = `scaleY(${ratio})`;
-      }
-      const canAfford = this.sun >= def.cost;
-      el.classList.toggle('disabled', cdLeft > 0 || !canAfford);
-      el.classList.toggle('selected', this.selected === id);
-    });
-
-    const shovelBtn = document.getElementById('btn-shovel');
-    if (shovelBtn) shovelBtn.classList.toggle('active', this.shovelMode);
-
-    // 关卡进度
-    const badge = document.getElementById('level-badge');
-    if (badge) {
-      badge.textContent = this.level
-        ? (this.level.endless ? `无尽 · 第 ${this.endlessN} 波` : `第 ${this.level.id} 关 · ${this.level.name}`)
-        : '';
-    }
-    const bar = document.getElementById('progress-bar');
-    if (bar) {
-      let pct = 0;
-      if (this.level && !this.level.endless) {
-        pct = (this.waveIndex / this.level.waves.length) * 100;
-      } else if (this.level && this.level.endless) {
-        pct = ((this.endlessN % 10) / 10) * 100;
-      }
-      bar.style.width = pct + '%';
-    }
-    const flags = document.getElementById('progress-flags');
-    if (flags && this.level && !this.level.endless) {
-      if (flags.children.length !== this.level.waves.length) {
-        flags.innerHTML = this.level.waves
-          .map(() => '<div class="flag"></div>').join('');
-      }
-      [...flags.children].forEach((f, i) => f.classList.toggle('done', i < this.waveIndex));
-    }
+    /* 画布内 HUD 每帧由 Renderer 重绘，无需 DOM 同步 */
   }
 
   /* ================= 渲染入口（含震屏） ================= */

@@ -1,19 +1,15 @@
 /* ===========================================================
    植物大战僵尸 · 网页版  —  样式表
+   （游戏 HUD 已画进 Canvas，这里只负责外层框架与弹窗）
    =========================================================== */
 
 :root {
-  --lawn-1: #a2d149;
-  --lawn-2: #8cc63f;
-  --soil:   #6b4423;
   --panel:  #2b1a0e;
-  --panel-2:#3d2612;
   --gold:   #f5c542;
   --gold-2: #d9a520;
   --text:   #f6efe2;
   --green:  #4caf50;
   --red:    #e74c3c;
-  --radius: 10px;
   --shadow: 0 6px 20px rgba(0, 0, 0, .45);
 }
 
@@ -34,162 +30,10 @@ html, body {
   display: flex;
   flex-direction: column;
   height: 100%;
-  max-width: 1100px;
+  max-width: 1180px;
   margin: 0 auto;
   background: #241608;
 }
-
-/* ---------------- 顶部 HUD ---------------- */
-#hud {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 10px;
-  background: linear-gradient(#3d2612, #2b1a0e);
-  border-bottom: 3px solid #1a0f05;
-  flex: 0 0 auto;
-}
-
-.hud-left, .hud-right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
-}
-
-.hud-center { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-
-#sun-box {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #f7e7b0;
-  color: #5a3d0a;
-  font-weight: 800;
-  font-size: 18px;
-  padding: 4px 12px;
-  border-radius: 20px;
-  border: 2px solid #c9a227;
-  box-shadow: inset 0 -2px 0 rgba(0,0,0,.12);
-  min-width: 88px;
-}
-#sun-box.bump { animation: bump .28s ease; }
-@keyframes bump { 50% { transform: scale(1.16); } }
-.sun-icon { font-size: 18px; }
-
-.hud-btn {
-  width: 38px; height: 38px;
-  font-size: 18px;
-  display: grid; place-items: center;
-  background: linear-gradient(#c9a227, #a07f14);
-  border: 2px solid #6d5408;
-  border-radius: 8px;
-  color: #fff;
-  cursor: pointer;
-  transition: transform .1s, filter .15s;
-}
-.hud-btn:hover { filter: brightness(1.12); }
-.hud-btn:active { transform: translateY(1px) scale(.97); }
-.hud-btn.active { background: linear-gradient(#7ec850, #4e8b28); border-color: #2f5c14; box-shadow: 0 0 0 2px #b6ff87 inset; }
-.hud-btn.muted { opacity: .5; }
-
-#level-badge {
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: .5px;
-  color: var(--gold);
-  text-align: center;
-}
-
-#progress-wrap {
-  position: relative;
-  height: 12px;
-  background: #1a0f05;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 1px solid #000;
-}
-#progress-bar {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, #6fbf3a, #a8e063);
-  transition: width .25s linear;
-}
-#progress-flags {
-  position: absolute; inset: 0;
-  display: flex;
-  pointer-events: none;
-}
-.flag {
-  flex: 1;
-  border-right: 2px solid rgba(0,0,0,.55);
-  position: relative;
-}
-.flag:last-child { border-right: none; }
-.flag.done::after {
-  content: "🚩";
-  position: absolute;
-  right: -2px; top: -4px;
-  font-size: 12px;
-  line-height: 1;
-}
-
-/* ---------------- 种子卡槽 ---------------- */
-#seedbar {
-  display: flex;
-  gap: 6px;
-  padding: 8px 10px;
-  background: #33200e;
-  border-bottom: 3px solid #1a0f05;
-  overflow-x: auto;
-  flex: 0 0 auto;
-  scrollbar-width: thin;
-}
-#seedbar::-webkit-scrollbar { height: 6px; }
-#seedbar::-webkit-scrollbar-thumb { background: #6b4423; border-radius: 3px; }
-
-.seed {
-  position: relative;
-  flex: 0 0 auto;
-  width: 68px;
-  background: linear-gradient(#e8d9a8, #cbb87d);
-  border: 2px solid #8b7333;
-  border-radius: var(--radius);
-  padding: 4px 3px 3px;
-  cursor: pointer;
-  text-align: center;
-  transition: transform .12s, box-shadow .15s;
-  overflow: hidden;
-}
-.seed:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,.4); }
-.seed.selected {
-  border-color: #fff;
-  box-shadow: 0 0 0 3px #7ec850, 0 0 14px #7ec850;
-  transform: translateY(-3px);
-}
-.seed .emoji { font-size: 26px; line-height: 1.1; display: block; filter: drop-shadow(0 1px 1px rgba(0,0,0,.3)); }
-.seed .name  { font-size: 10px; color: #4a3410; font-weight: 700; margin-top: 1px; }
-.seed .cost  {
-  font-size: 11px; font-weight: 800; color: #2e2005;
-  background: rgba(255,255,255,.55);
-  border-radius: 8px;
-  padding: 0 5px;
-  display: inline-block;
-  margin-top: 1px;
-}
-.seed .key {
-  position: absolute; top: 2px; left: 3px;
-  font-size: 9px; color: #6b5a2a; font-weight: 700;
-}
-.seed .cd-mask {
-  position: absolute; inset: 0;
-  background: rgba(20, 12, 4, .72);
-  pointer-events: none;
-  transform-origin: top;
-  transform: scaleY(0);
-}
-.seed.disabled { filter: grayscale(.65) brightness(.85); cursor: not-allowed; }
-.seed.disabled .cost { color: var(--red); }
 
 /* ---------------- 舞台 / 画布 ---------------- */
 #stage {
@@ -198,16 +42,15 @@ html, body {
   min-height: 0;
   display: grid;
   place-items: center;
-  background:
-    radial-gradient(ellipse at 50% 0%, #3f2a12 0%, #1b1206 70%);
+  background: radial-gradient(ellipse at 50% 0%, #3f2a12 0%, #1b1206 70%);
   padding: 8px;
   overflow: hidden;
 }
 
 #game {
   display: block;
-  border-radius: 8px;
-  box-shadow: var(--shadow);
+  border-radius: 10px;
+  box-shadow: var(--shadow), 0 0 0 3px #3d2612, 0 0 0 6px #1a0f05;
   touch-action: none;
   cursor: pointer;
   max-width: 100%;
@@ -240,7 +83,7 @@ html, body {
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(10, 6, 2, .82);
+  background: rgba(10, 6, 2, .84);
   backdrop-filter: blur(3px);
   z-index: 40;
   padding: 16px;
@@ -260,14 +103,15 @@ html, body {
   width: 100%;
   animation: pop .22s ease;
 }
-.panel.wide { max-width: 720px; }
+.panel.wide { max-width: 760px; }
 @keyframes pop { from { transform: scale(.94); opacity: 0; } }
 
 .title {
-  font-size: clamp(22px, 4.6vw, 34px);
+  font-size: clamp(24px, 5vw, 38px);
   color: var(--gold);
-  text-shadow: 0 2px 0 #7a5c0c, 0 0 22px rgba(245,197,66,.35);
+  text-shadow: 0 3px 0 #7a5c0c, 0 0 24px rgba(245,197,66,.4);
   margin-bottom: 6px;
+  letter-spacing: 2px;
 }
 .subtitle { font-size: 13px; color: #b9a582; margin-bottom: 18px; }
 .panel h2 { color: var(--gold); font-size: 22px; margin-bottom: 12px; }
@@ -276,7 +120,7 @@ html, body {
 /* ---------------- 关卡选择 ---------------- */
 #level-select {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 10px;
   margin-bottom: 18px;
 }
@@ -303,11 +147,7 @@ html, body {
 }
 .level-card.locked .lv-name, .level-card.locked .lv-desc { color: #999; }
 
-.best-box {
-  font-size: 13px;
-  color: #cbb87d;
-  margin-bottom: 6px;
-}
+.best-box { font-size: 13px; color: #cbb87d; margin-bottom: 6px; }
 .best-box strong { color: var(--gold); }
 .best-box .sep { margin: 0 8px; opacity: .5; }
 .credits { font-size: 11px; color: #8a7a5c; margin-top: 14px; line-height: 1.6; }
@@ -341,6 +181,9 @@ html, body {
   color: #12290a;
   text-shadow: 0 1px 0 rgba(255,255,255,.35);
 }
+.btn.small { font-size: 12.5px; padding: 8px 14px; }
+.btn.muted { opacity: .6; }
+.btn.active { background: linear-gradient(#7ec850, #4e8b28); border-color: #b6ff87; color: #12290a; }
 
 kbd {
   background: #1a0f05;
@@ -356,7 +199,7 @@ kbd {
 /* ---------------- 帮助 ---------------- */
 .help-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 14px;
   text-align: left;
   margin-top: 6px;
@@ -382,16 +225,11 @@ kbd {
   cursor: pointer;
   user-select: none;
 }
-.switch-row input {
-  position: absolute;
-  opacity: 0;
-  width: 0; height: 0;
-}
+.switch-row input { position: absolute; opacity: 0; width: 0; height: 0; }
 .switch-track {
   position: relative;
   flex: 0 0 auto;
-  width: 38px;
-  height: 20px;
+  width: 38px; height: 20px;
   border-radius: 10px;
   background: #1a0f05;
   border: 2px solid #6d5408;
@@ -405,22 +243,10 @@ kbd {
   background: #8a7a5c;
   transition: transform .18s, background .18s;
 }
-.switch-row input:checked + .switch-track {
-  background: #4e8b28;
-  border-color: #b6ff87;
-}
-.switch-row input:checked + .switch-track .switch-knob {
-  transform: translateX(18px);
-  background: #eaffd6;
-}
-.switch-row input:focus-visible + .switch-track {
-  box-shadow: 0 0 0 3px rgba(126, 200, 80, .5);
-}
-.switch-label {
-  font-size: 12.5px;
-  color: #ddd0b8;
-  font-weight: 600;
-}
+.switch-row input:checked + .switch-track { background: #4e8b28; border-color: #b6ff87; }
+.switch-row input:checked + .switch-track .switch-knob { transform: translateX(18px); background: #eaffd6; }
+.switch-row input:focus-visible + .switch-track { box-shadow: 0 0 0 3px rgba(126, 200, 80, .5); }
+.switch-label { font-size: 12.5px; color: #ddd0b8; font-weight: 600; }
 
 /* ---------------- 结算 ---------------- */
 #result-title { font-size: 28px; }
@@ -447,11 +273,7 @@ kbd {
 
 /* ---------------- 移动端 ---------------- */
 @media (max-width: 640px) {
-  #sun-box { font-size: 15px; padding: 3px 9px; min-width: 68px; }
-  .hud-btn { width: 32px; height: 32px; font-size: 15px; }
-  .seed { width: 58px; }
-  .seed .emoji { font-size: 22px; }
-  .seed .name { font-size: 9px; }
   .panel { padding: 16px; }
   #result-stats { grid-template-columns: 1fr; }
+  .title { letter-spacing: 1px; }
 }

@@ -320,8 +320,9 @@ class Sun {
 
     if (this.collected) {
       this.collectT += dt * 2.4;
-      // 飞向阳光计数器
-      const tx = 40, ty = 28;
+      // 飞向顶部阳光计数器
+      const tx = UI.sunBox.x + UI.sunBox.w / 2;
+      const ty = UI.sunBox.y + UI.sunBox.h / 2;
       this.x += (tx - this.x) * Math.min(1, dt * 6);
       this.y += (ty - this.y) * Math.min(1, dt * 6);
       this.life = Math.max(0, 1 - this.collectT);
@@ -343,7 +344,7 @@ class Sun {
   }
 
   hitTest(x, y) {
-    return Math.hypot(x - this.x, y - this.y) < 30;
+    return Math.hypot(x - this.x, y - this.y) < 32;
   }
 }
 
